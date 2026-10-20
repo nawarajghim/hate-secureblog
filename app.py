@@ -1,10 +1,13 @@
 
 from flask import Flask, request, jsonify, Response
 import markdown
+import html
 from functools import wraps
 
 app = Flask("hate-secureblog")
 
+# Security fix: reject request bodies larger than 1 MiB.
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
 # Hardcoded authentication token
 AUTH_TOKEN = "my-secret-token"
 
@@ -52,11 +55,12 @@ def get_post(post_id):
 
     content = posts[post_id]
 
-    # Intentionally unsafe Markdown rendering:
-    # raw HTML is preserved without sanitization.
-    html = markdown.markdown(content)
+    # Security fix: escape raw HTML to prevent Stored XSS.
+    # Markdown formatting is still converted into HTML.
+    safe_content = html.escape(content)
+    html_output = markdown.markdown(safe_content)
 
-    return Response(html, mimetype="text/html")
+    return Response(html_output, mimetype="text/html")
 
 
 if __name__ == "__main__":
